@@ -1,5 +1,5 @@
 #include "kvs.h"
-#include "math.h"  //테스트중
+#include "math.h"  //바뀌는지 테스트중 
 int main()
 {
 	kvs_t* kvs = open();
