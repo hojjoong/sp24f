@@ -23,11 +23,11 @@ int main()
 		return -1;
 	}
 	char line[256];
-	while(fgets(line, sizeof(line), queryFile){
+	while(fgets(line, sizeof(line), queryFile){     //한 줄씩 읽어서처리
 		char operation[10], key[100], value[100];
 		int result;
-
-		if(sscanf(line, "%[^,],%[^,],%s", operation, key, value)<2{
+	//sscanf가 line에서 세 개 이상의 값을 제대로 못읽으면 오류 출력
+		if(sscanf(line, "%[^,],%[^,],%s", operation, key, value)<3{
 			printf("Error reading line:%s", line);
 			continue;
 		}
