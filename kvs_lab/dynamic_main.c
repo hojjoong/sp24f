@@ -79,7 +79,7 @@ int main()
                 		free(get_value);
             		}
             		else{  //값을 찾을 수 없는 경우
-                		printf("Value not found\n");
+                		printf("-1\n");
                 		fprintf(answerFile, "-1\n");
             		}
         	}
