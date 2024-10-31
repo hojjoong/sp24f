@@ -28,12 +28,12 @@ int main() {
         else if(strcmp(opt, "get")==0){
             char* get_value = get(kvs, key);
             if(get_value){
-                printf("Value found: %s\n", get_value);
+                printf("%s\n", get_value);
                 fprintf(answerFile, "%s\n", get_value);
                 free(get_value);
             }
             else{
-                printf("Value not found\n");
+                printf("-1\n");
                 fprintf(answerFile, "-1\n");
             }
         }

@@ -15,7 +15,7 @@ LARS = libkvs.a
 LARD = libkvs.so
 
 #환경 변수에 경로 지정
-export LD_LIBRARY_PATH := $(shell pwd):$(LD_LIBRARY_PATH)
+export LD_LIBRARY_PATH=.
 
 all: static dynamic
 

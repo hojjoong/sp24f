@@ -3,10 +3,16 @@
 //새 노드 생성
 node_t *create_node(int level, const char *key, const char *value) {
     node_t *new_node = (node_t *)malloc(sizeof(node_t));
+    if(!new_node){
+	return NULL;
+	}
     new_node->forward = (node_t **)malloc(sizeof(node_t *) * (level + 1));
     strcpy(new_node->key, key);
     new_node->value = (char *)malloc(strlen(value) + 1);
     strcpy(new_node->value, value);
+    for(int i=0; i<=level; i++){
+	    new_node->forward[i] = NULL;
+    }
     return new_node;
 }
 
