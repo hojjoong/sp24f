@@ -14,7 +14,6 @@ int main() {
         close(kvs);
         return -1;
     }
-
     char opt[5];
     char key[24];
     char value[24];
@@ -38,7 +37,6 @@ int main() {
             }
         }
     }
-
     fclose(queryFile);
     fclose(answerFile);
     close(kvs);
