@@ -48,4 +48,4 @@ $(LARD):
 
 clean:
 	rm -f $(OBJS1) $(OBJS2) $(LOBJS) $(LARS) $(LARD) $(TARG_STATIC) $(TARG_DYNAMIC)
-
+	rm -f kvs_baseline.img kvs_custom.img
