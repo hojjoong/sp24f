@@ -158,51 +158,50 @@ int main() {
     fclose(data_file);
 
     // Baseline 버전
-    printf("\n--Baseline 버전--\n");
-    start = clock();
-    do_snapshot_baseline("kvs_baseline.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
+    // printf("\n--Baseline 버전--\n");
+    // start = clock();
+    // do_snapshot_baseline("kvs_baseline.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
 
-    kvs_close(kvs);
+    // kvs_close(kvs);
 
-    kvs = kvs_open("kvs_baseline.img", 0); 
-    start = clock();
-    do_recovery_baseline("kvs_baseline.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
+    // kvs = kvs_open("kvs_baseline.img", 0); 
+    // start = clock();
+    // do_recovery_baseline("kvs_baseline.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
 
-    kvs_close(kvs);
+    // kvs_close(kvs);
 
     // Custom 버전
-    // kvs = kvs_open(NULL, 0);  // 복구 없이 초기화
-    // if (!kvs) {
-    //     printf("kvs 열기 실패\n");
-    //     return -1;
-    // }
+    if (!kvs) {
+        printf("kvs 열기 실패\n");
+        return -1;
+    }
 
-    // printf("\n--Custom 버전--\n");
-    // start = clock();
-    // do_snapshot_custom("kvs_custom.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    printf("\n--Custom 버전--\n");
+    start = clock();
+    do_snapshot_custom("kvs_custom.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
 
-    // kvs_close(kvs);
+    kvs_close(kvs);
 
-    // kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
-    // start = clock();
-    // do_recovery_custom("kvs_custom.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Custom 복구 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    start = clock();
+    do_recovery_custom("kvs_custom.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
 
-    // kvs_close(kvs);
+    kvs_close(kvs);
     return 0;
 }
