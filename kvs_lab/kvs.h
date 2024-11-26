@@ -5,7 +5,7 @@
 #include<fcntl.h>
 #include<time.h>
 #include<sys/resource.h>
-
+#include<stdbool.h>
 
 #define MAX_LEVEL 10
 
@@ -38,3 +38,5 @@ int random_level();
 void do_snapshot(kvs_t* kvs);
 void do_recovery_baseline(const char *filename, kvs_t *kvs);
 void do_recovery_custom(const char *filename, kvs_t *kvs);
+
+bool verify_kvs(kvs_t *kvs, const char *original_data_path);

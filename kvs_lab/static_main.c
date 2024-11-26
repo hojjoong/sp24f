@@ -118,9 +118,38 @@ void measure_memory_usage() {
     printf("메모리 사용량: %ld 킬로바이트\n", usage.ru_maxrss);
 }
 
+// KVS 검증 함수
+bool verify_kvs(kvs_t *kvs, const char *original_data_path) {
+    FILE *original_file = fopen(original_data_path, "r");
+    if (original_file == NULL) {
+        perror("fopen");
+        return false;
+    }
+
+    char key[256], value[5001];
+    bool is_valid = true;
+
+    // 원래 데이터 파일의 모든 줄을 읽음
+    while (fscanf(original_file, "%255[^,],%5000[^\n]", key, value) == 2) {
+        char *retrieved_value = get(kvs, key);
+        if (retrieved_value == NULL) {
+            printf("키 '%s'가 KVS에 없습니다!\n", key);
+            is_valid = false;
+        } else if (strcmp(retrieved_value, value) != 0) {
+            printf("키 '%s'의 값이 다릅니다! (원래: '%s', 복구: '%s')\n",
+                   key, value, retrieved_value);
+            is_valid = false;
+        }
+    }
+
+    fclose(original_file);
+    return is_valid;
+}
+
 int main() {
     // cluster004.trc 파일에서 데이터를 읽어와 dataset에 입력
     const char *data_path = "/home/ubuntu/sp24f/cluster004.trc";
+
     FILE *data_file = fopen(data_path, "r");
     if (data_file == NULL) {
         perror("fopen");
@@ -158,50 +187,65 @@ int main() {
     fclose(data_file);
 
     // Baseline 버전
-    // printf("\n--Baseline 버전--\n");
-    // start = clock();
-    // do_snapshot_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    printf("\n--Baseline 버전--\n");
+    start = clock();
+    do_snapshot_baseline("kvs_baseline.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
 
-    // kvs_close(kvs);
+    kvs_close(kvs);
 
-    // kvs = kvs_open("kvs_baseline.img", 0); 
-    // start = clock();
-    // do_recovery_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    kvs = kvs_open("kvs_baseline.img", 0); 
+    start = clock();
+    do_recovery_baseline("kvs_baseline.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
 
-    // kvs_close(kvs);
-
-    // Custom 버전
-    if (!kvs) {
-        printf("kvs 열기 실패\n");
-        return -1;
+    printf("\n-- 복구된 KVS 검증 --\n");
+    if (verify_kvs(kvs, data_path)) {
+        printf("KVS 검증 성공: 복구된 데이터가 원본과 일치합니다.\n");
+    } else {
+        printf("KVS 검증 실패: 복구된 데이터가 원본과 다릅니다.\n");
     }
 
-    printf("\n--Custom 버전--\n");
-    start = clock();
-    do_snapshot_custom("kvs_custom.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
-
     kvs_close(kvs);
 
-    kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
-    start = clock();
-    do_recovery_custom("kvs_custom.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Custom 복구 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
+    // Custom 버전
+    // if (!kvs) {
+    //     printf("kvs 열기 실패\n");
+    //     return -1;
+    // }
 
-    kvs_close(kvs);
+    // printf("\n--Custom 버전--\n");
+    // start = clock();
+    // do_snapshot_custom("kvs_custom.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
+
+    // kvs_close(kvs);
+
+    // kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    // start = clock();
+    // do_recovery_custom("kvs_custom.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
+
+
+    // printf("\n-- 복구된 KVS 검증 --\n");
+    // if (verify_kvs(kvs, data_path)) {
+    //     printf("KVS 검증 성공: 복구된 데이터가 원본과 일치합니다.\n");
+    // } else {
+    //     printf("KVS 검증 실패: 복구된 데이터가 원본과 다릅니다.\n");
+    // }
+
+    // kvs_close(kvs);
     return 0;
 }
