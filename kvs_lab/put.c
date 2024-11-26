@@ -7,8 +7,22 @@ node_t *create_node(int level, const char *key, const char *value) {
 	return NULL;
 	}
     new_node->forward = (node_t **)malloc(sizeof(node_t *) * (level + 1));
+    //오류 확인
+    if (!new_node->forward) {
+        fprintf(stderr, "노드 포인터 메모리 할당 실패\n");
+        free(new_node);
+        return NULL;
+    }
+
     strcpy(new_node->key, key);
     new_node->value = (char *)malloc(strlen(value) + 1);
+    //오류 확인
+    if (!new_node->value) {
+        fprintf(stderr, "노드 값 메모리 할당 실패\n");
+        free(new_node->forward);
+        free(new_node);
+        return NULL;
+    }
     strcpy(new_node->value, value);
     for(int i=0; i<=level; i++){
 	    new_node->forward[i] = NULL;
@@ -40,6 +54,10 @@ int put(kvs_t *kvs, const char *key, const char *value) {
     if (current != NULL && strcmp(current->key, key) == 0) {
         free(current->value);
         current->value = (char *)malloc(strlen(value) + 1);
+        if (!current->value) {
+            fprintf(stderr, "값 메모리 할당 실패\n");
+            return -1;
+        }
         strcpy(current->value, value);
         return 0;
     } else {
@@ -52,6 +70,10 @@ int put(kvs_t *kvs, const char *key, const char *value) {
         }
 
         node_t *new_node = create_node(new_level, key, value);
+        if (new_node == NULL) {
+            fprintf(stderr, "새 노드 생성 실패\n");
+            return -1;
+        }
         for (int i = 0; i <= new_level; i++) {
             new_node->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = new_node;
