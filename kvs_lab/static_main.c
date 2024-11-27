@@ -9,18 +9,15 @@ void do_snapshot_baseline(const char *filename, kvs_t *kvs) {
         perror("fopen");
         return;
     }
-
     node_t *current = kvs->db->forward[0];
     while (current != NULL) {
         fprintf(file, "%s %s\n", current->key, current->value);
         current = current->forward[0];
     }
-
     fflush(file);
     fsync(fileno(file));
     fclose(file);
 }
-
 // Baseline 버전: do_recovery 함수 - fscanf 사용
 void do_recovery_baseline(const char *filename, kvs_t *kvs) {
     FILE *file = fopen(filename, "r");
@@ -28,17 +25,14 @@ void do_recovery_baseline(const char *filename, kvs_t *kvs) {
         perror("fopen");
         return;
     }
-
     char key[256], value[5001];
     while (fscanf(file, "%255s %5000[^\n]", key, value) == 2) {  //kvs_baseline.img에는 tweet숫자 문자열(중간에 공백)으로 저장되어 있어서 공백을 기준으로 읽었어야...
         if (put(kvs, key, value) == -1) {
             fprintf(stderr, "키-값 쌍 삽입 실패: %s, %s\n", key, value);
         }
     }
-
     fclose(file);
 }
-
 // Custom 버전: do_snapshot 함수 - system call 사용
 void do_snapshot_custom(const char *filename, kvs_t *kvs) {
     int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -46,7 +40,6 @@ void do_snapshot_custom(const char *filename, kvs_t *kvs) {
         perror("open");
         return;
     }
-
     node_t *current = kvs->db->forward[0];
     char buffer[520];
     ssize_t written; //오류처리 하기 위해
@@ -60,128 +53,65 @@ void do_snapshot_custom(const char *filename, kvs_t *kvs) {
         }
         current = current->forward[0];
     }
-
     fsync(fd);
     close(fd);
 }
-
-// Custom 버전: do_recovery 함수 - system call 사용
-// void do_recovery_custom(const char *filename, kvs_t *kvs) {
-//     int fd = open(filename, O_RDONLY);
-//     if (fd == -1) {
-//         perror("open");
-//         return;
-//     }
-
-//     //복구 sementation fault... buffer 늘리기? buffer에서 내용이 잘리나?-> \n으로 구분?  
-//     //strtok()을 사용하여 줄을 나누지만, 마지막 줄이 완전하지 않을 경우 
-//     //leftover에 저장하여 다음에 읽을 때 처리하도록 수정
-//     char buffer[6000];
-//     ssize_t bytes_read;
-//     char key[256], value[5001];
-//     char leftover[6000] = ""; // 이전에 읽고 남은 데이터 저장용
-
-//     while ((bytes_read = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
-//         buffer[bytes_read] = '\0';
-//         // 이전에 읽고 남은 데이터와 현재 읽은 데이터를 합쳐서 처리
-//         char combined[12000];
-//         snprintf(combined, sizeof(combined), "%s%s", leftover, buffer);
-
-//         // 줄 단위("\n")로 나누어 처리하기 위해 strtok 사용
-//         char *line = strtok(combined, "\n");  
-//         while (line != NULL) {
-//             //마지막 줄에 '\n'이 없는 경우, 이 줄을 leftover에 저장
-//             char *next_line = strtok(NULL, "\n");
-//             if (next_line == NULL) {
-//                 // 완전하지 않은 줄은 leftover에 저장
-//                 snprintf(leftover, sizeof(leftover), "%s", line);
-//             } else {
-//                 // 완전한 줄은 처리
-//                 if (sscanf(line, "%255s %5000[^\n]", key, value) == 2) {
-//                     if (put(kvs, key, value) == -1) {
-//                         fprintf(stderr, "key-value 삽입 실패: %s, %s\n", key, value);
-//                     }
-//                 }
-//             }
-//             line = next_line;
-//         }
-//     }
-//     // 마지막 읽기에서 남아 있는 데이터가 있다면 이를 처리
-//     if (strlen(leftover) > 0) {
-//         if (sscanf(leftover, "%255s %5000[^\n]", key, value) == 2) {
-//             if (put(kvs, key, value) == -1) {
-//                 fprintf(stderr, "키-값 쌍 삽입 실패 (남은 데이터): %s, %s\n", key, value);
-//             }
-//         }
-//     }
-//     if (bytes_read == -1) {
-//         perror("failed read");
-//     }
-//     close(fd);
-// }
-
 void do_recovery_custom(const char *filename, kvs_t *kvs) {
     int fd = open(filename, O_RDONLY);
     if (fd == -1) {
         perror("open");
         return;
     }
-
     char buffer[6000];
     ssize_t bytes_read;
     char key[256], value[5001];
-    int buffer_index = 0;
-
-    while ((bytes_read = read(fd, buffer + buffer_index, sizeof(buffer) - buffer_index - 1)) > 0) {
-        buffer[bytes_read + buffer_index] = '\0';
-
-        char *line_start = buffer;
-        char *newline_pos;
-
-        while ((newline_pos = strchr(line_start, '\n')) != NULL) {
-            *newline_pos = '\0'; // 줄의 끝을 표시
-
-            // 파싱하여 키와 값을 추출
-            if (sscanf(line_start, "%255s %5000[^\n]", key, value) == 2) {
-                if (put(kvs, key, value) == -1) {
-                    fprintf(stderr, "키-값 쌍 삽입 실패: %s, %s\n", key, value);
-                } 
+    char *current_pos;
+    while ((bytes_read = read(fd, buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[bytes_read] = '\0';  // 널 종료 문자 추가하여 C 문자열로 만듦
+        current_pos = buffer;
+        while (current_pos != NULL) {
+            // "tweet" 문자열 찾기
+            char *tweet_pos = strstr(current_pos, "tweet");
+            if (tweet_pos == NULL) {
+                break;  // 더 이상 "tweet" 문자열이 없으면 반복 종료
             }
-            line_start = newline_pos + 1; // 다음 줄로 이동
-        }
-
-        // 남은 데이터를 버퍼 앞으로 이동
-        buffer_index = strlen(line_start);
-        memmove(buffer, line_start, buffer_index);
-    }
-
-    // 마지막 남은 줄이 있을 경우 처리
-    if (buffer_index > 0) {
-        buffer[buffer_index] = '\0';
-        if (sscanf(buffer, "%255s %5000[^\n]", key, value) == 2) {
+            // "tweet" 이후의 숫자 (키) 읽기
+            int key_length = 0;
+            while (tweet_pos[key_length] != ' ' && tweet_pos[key_length] != '\t' && tweet_pos[key_length] != '\0' && key_length < 255) {
+                key[key_length] = tweet_pos[key_length];
+                key_length++;
+            }
+            key[key_length] = '\0';  // 키 문자열 종료
+            // 공백을 건너뛰고 값 읽기
+            current_pos = tweet_pos + key_length;
+            while (*current_pos == ' ' || *current_pos == '\t') {
+                current_pos++;  // 공백 또는 탭 문자를 건너뜀
+            }
+            // 값 읽기
+            int value_length = 0;
+            while (current_pos[value_length] != '\0' && strncmp(current_pos + value_length, "tweet", 5) != 0 && value_length < 5000) {
+                value[value_length] = current_pos[value_length];
+                value_length++;
+            }
+            value[value_length] = '\0';  // 값 문자열 종료
+            // 키-값 쌍을 kvs에 삽입
             if (put(kvs, key, value) == -1) {
-                fprintf(stderr, "키-값 쌍 삽입 실패 (남은 데이터): %s, %s\n", key, value);
+                fprintf(stderr, "키-값 쌍 삽입 실패: %s, %s\n", key, value);
             }
+            // 다음 "tweet" 문자열 탐색
+            current_pos += value_length;
         }
     }
-
     if (bytes_read == -1) {
         perror("failed read");
     }
-
     close(fd);
 }
-
-
-
-
-
 void measure_memory_usage() {
     struct rusage usage;
     getrusage(RUSAGE_SELF, &usage);
     printf("메모리 사용량: %ld 킬로바이트\n", usage.ru_maxrss);
 }
-
 // 특정 키들에 대한 get 요청을 보내어 값을 출력하는 함수 추가
 void test_get_requests(kvs_t *kvs) {
     const char *keys[] = {"tweet55", "tweet13843", "tweet3482"};
@@ -190,13 +120,12 @@ void test_get_requests(kvs_t *kvs) {
     for (int i = 0; i < 3; i++) {
         value = get(kvs, keys[i]);
         if (value != NULL) {
-            printf("Key: %s, Value: %s\n", keys[i], value);
+            printf("Key: %s is in KVS\n", keys[i]);
         } else {
             printf("Key: %s not found in KVS\n", keys[i]);
         }
     }
 }
-
 int main() {
     // cluster004.trc 파일에서 데이터를 읽어와 dataset에 입력
     const char *data_path = "/home/ubuntu/sp24f/cluster004.trc";
@@ -242,52 +171,22 @@ int main() {
 
 
     // Baseline 버전
-    // printf("\n--Baseline 버전--\n");
-    // start = clock();
-    // do_snapshot_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
-
-    // kvs_close(kvs);
-
-    // kvs = kvs_open("kvs_baseline.img", 0); 
-    // start = clock();
-    // do_recovery_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
-
-    // // 스냅샷 후 특정 키들에 대해 get 요청
-    // printf("\n--Get 요청 테스트--\n");
-    // test_get_requests(kvs);
-
-    // kvs_close(kvs);
-
-    // Custom 버전
-    if (!kvs) {
-        printf("kvs 열기 실패\n");
-        return -1;
-    }
-
-    printf("\n--Custom 버전--\n");
+    printf("\n--Baseline 버전--\n");
     start = clock();
-    do_snapshot_custom("kvs_custom.img", kvs);
+    do_snapshot_baseline("kvs_baseline.img", kvs);
     end = clock();
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
     measure_memory_usage();
 
     kvs_close(kvs);
 
-    kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    kvs = kvs_open("kvs_baseline.img", 0); 
     start = clock();
-    do_recovery_custom("kvs_custom.img", kvs);
+    do_recovery_baseline("kvs_baseline.img", kvs);
     end = clock();
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
     measure_memory_usage();
 
     // 스냅샷 후 특정 키들에 대해 get 요청
@@ -295,5 +194,35 @@ int main() {
     test_get_requests(kvs);
 
     kvs_close(kvs);
+
+    // Custom 버전
+    // if (!kvs) {
+    //     printf("kvs 열기 실패\n");
+    //     return -1;
+    // }
+
+    // printf("\n--Custom 버전--\n");
+    // start = clock();
+    // do_snapshot_custom("kvs_custom.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
+
+    // kvs_close(kvs);
+
+    // kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    // start = clock();
+    // do_recovery_custom("kvs_custom.img", kvs);
+    // end = clock();
+    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    // printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    // measure_memory_usage();
+
+    // // 스냅샷 후 특정 키들에 대해 get 요청
+    // printf("\n--Get 요청 테스트--\n");
+    // test_get_requests(kvs);
+
+    // kvs_close(kvs);
     return 0;
 }
