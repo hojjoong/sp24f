@@ -41,13 +41,30 @@ void do_snapshot_custom(const char *filename, kvs_t *kvs) {
         return;
     }
     node_t *current = kvs->db->forward[0];
-    char buffer[520];
     ssize_t written; //오류처리 하기 위해
     while (current != NULL) {
-        snprintf(buffer, sizeof(buffer), "%s %s\n", current->key, current->value);
-        written = write(fd, buffer, strlen(buffer));
-        if(written == -1){
-            perror("failed write");
+        // Writing key
+        written = write(fd, current->key, strlen(current->key));
+        if (written == -1) {
+            perror("failed write key");
+            close(fd);
+            return;
+        }
+        written = write(fd, " ", 1);
+        if (written == -1) {
+            perror("failed write space");
+            close(fd);
+            return;
+        }
+        written = write(fd, current->value, strlen(current->value));
+        if (written == -1) {
+            perror("failed write value");
+            close(fd);
+            return;
+        }
+        written = write(fd, "\n", 1);
+        if (written == -1) {
+            perror("failed write newline");
             close(fd);
             return;
         }
@@ -77,15 +94,15 @@ void do_recovery_custom(const char *filename, kvs_t *kvs) {
             }
             // "tweet" 이후의 숫자 (키) 읽기
             int key_length = 0;
-            while (tweet_pos[key_length] != ' ' && tweet_pos[key_length] != '\t' && tweet_pos[key_length] != '\0' && key_length < 255) {
+            while (tweet_pos[key_length] != ' ' && tweet_pos[key_length] != '\0' && key_length < 255) {
                 key[key_length] = tweet_pos[key_length];
                 key_length++;
             }
             key[key_length] = '\0';  // 키 문자열 종료
             // 공백을 건너뛰고 값 읽기
             current_pos = tweet_pos + key_length;
-            while (*current_pos == ' ' || *current_pos == '\t') {
-                current_pos++;  // 공백 또는 탭 문자를 건너뜀
+            while (*current_pos == ' ') {
+                current_pos++;
             }
             // 값 읽기
             int value_length = 0;
@@ -96,7 +113,11 @@ void do_recovery_custom(const char *filename, kvs_t *kvs) {
             value[value_length] = '\0';  // 값 문자열 종료
             // 키-값 쌍을 kvs에 삽입
             if (put(kvs, key, value) == -1) {
-                fprintf(stderr, "키-값 쌍 삽입 실패: %s, %s\n", key, value);
+                char error_message[600];
+                int message_length = snprintf(error_message, sizeof(error_message), "키-값 쌍 삽입 실패: %s, %s\n", key, value);
+                if (message_length > 0) {
+                    write(STDERR_FILENO, error_message, message_length);
+                }
             }
             // 다음 "tweet" 문자열 탐색
             current_pos += value_length;
@@ -171,52 +192,22 @@ int main() {
 
 
     // Baseline 버전
-    printf("\n--Baseline 버전--\n");
-    start = clock();
-    do_snapshot_baseline("kvs_baseline.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
-
-    kvs_close(kvs);
-
-    kvs = kvs_open("kvs_baseline.img", 0); 
-    start = clock();
-    do_recovery_baseline("kvs_baseline.img", kvs);
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
-    measure_memory_usage();
-
-    // 스냅샷 후 특정 키들에 대해 get 요청
-    printf("\n--Get 요청 테스트--\n");
-    test_get_requests(kvs);
-
-    kvs_close(kvs);
-
-    // Custom 버전
-    // if (!kvs) {
-    //     printf("kvs 열기 실패\n");
-    //     return -1;
-    // }
-
-    // printf("\n--Custom 버전--\n");
+    // printf("\n--Baseline 버전--\n");
     // start = clock();
-    // do_snapshot_custom("kvs_custom.img", kvs);
+    // do_snapshot_baseline("kvs_baseline.img", kvs);
     // end = clock();
     // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    // printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
     // measure_memory_usage();
 
     // kvs_close(kvs);
 
-    // kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    // kvs = kvs_open("kvs_baseline.img", 0); 
     // start = clock();
-    // do_recovery_custom("kvs_custom.img", kvs);
+    // do_recovery_baseline("kvs_baseline.img", kvs);
     // end = clock();
     // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    // printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
     // measure_memory_usage();
 
     // // 스냅샷 후 특정 키들에 대해 get 요청
@@ -224,5 +215,35 @@ int main() {
     // test_get_requests(kvs);
 
     // kvs_close(kvs);
+
+    // Custom 버전
+    if (!kvs) {
+        printf("kvs 열기 실패\n");
+        return -1;
+    }
+
+    printf("\n--Custom 버전--\n");
+    start = clock();
+    do_snapshot_custom("kvs_custom.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Custom 스냅샷 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
+
+    kvs_close(kvs);
+
+    kvs = kvs_open("kvs_custom.img", 1);  // Custom 복구
+    start = clock();
+    do_recovery_custom("kvs_custom.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Custom 복구 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
+
+    // 스냅샷 후 특정 키들에 대해 get 요청
+    printf("\n--Get 요청 테스트--\n");
+    test_get_requests(kvs);
+
+    kvs_close(kvs);
     return 0;
 }
