@@ -141,7 +141,7 @@ void test_get_requests(kvs_t *kvs) {
     for (int i = 0; i < 3; i++) {
         value = get(kvs, keys[i]);
         if (value != NULL) {
-            printf("Key: %s is in KVS\n", keys[i]);
+            printf("Key: %s Value: %s is in KVS\n", keys[i], value);
         } else {
             printf("Key: %s not found in KVS\n", keys[i]);
         }
@@ -192,32 +192,31 @@ int main() {
 
 
     // Baseline 버전
-    // printf("\n--Baseline 버전--\n");
-    // start = clock();
-    // do_snapshot_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    printf("\n--Baseline 버전--\n");
+    start = clock();
+    do_snapshot_baseline("kvs_baseline.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Baseline 스냅샷 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
+    kvs_close(kvs);
 
-    // kvs_close(kvs);
+    kvs = kvs_open("kvs_baseline.img", 0); 
+    start = clock();
+    do_recovery_baseline("kvs_baseline.img", kvs);
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
+    measure_memory_usage();
 
-    // kvs = kvs_open("kvs_baseline.img", 0); 
-    // start = clock();
-    // do_recovery_baseline("kvs_baseline.img", kvs);
-    // end = clock();
-    // cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
-    // printf("Baseline 복구 시간: %f 초\n", cpu_time_used);
-    // measure_memory_usage();
+    // 스냅샷 후 특정 키들에 대해 get 요청
+    printf("\n--Get 요청 테스트--\n");
+    test_get_requests(kvs);
 
-    // // 스냅샷 후 특정 키들에 대해 get 요청
-    // printf("\n--Get 요청 테스트--\n");
-    // test_get_requests(kvs);
-
-    // kvs_close(kvs);
+    kvs_close(kvs);
 
     // Custom 버전
-    if (!kvs) {
+    /*if (!kvs) {
         printf("kvs 열기 실패\n");
         return -1;
     }
@@ -245,5 +244,6 @@ int main() {
     test_get_requests(kvs);
 
     kvs_close(kvs);
+    */
     return 0;
 }
